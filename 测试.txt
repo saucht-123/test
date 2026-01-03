@@ -1,0 +1,286 @@
+#define _CRT_SECURE_NO_WARNINGS 1
+#include <string.h>
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+// ====================== 神舟飞船专属结构体 ======================
+typedef struct {
+    char name[20];          // 飞船名称（如"神舟五号"）
+    char launch_date[20];   // 发射日期（格式：YYYY-MM-DD）
+    char launch_site[50];   // 发射地点
+    char astronauts[100];   // 航天员列表
+    char developer[100];    // 研制单位
+    char mission[200];      // 主要完成任务
+} ShenzhouShip;
+
+// ====================== 函数声明 ======================
+// 文件操作
+void saveShenzhouToFile(ShenzhouShip ships[], int count, const char* filename);
+int loadShenzhouFromFile(ShenzhouShip ships[], int max_count, const char* filename);
+
+// 自定义排序函数（2个核心）
+void sortByLaunchDate(ShenzhouShip ships[], int count);  // 按发射日期排序
+void sortByShipNumber(ShenzhouShip ships[], int count);  // 按飞船编号排序
+
+// 自定义插入函数
+int insertShenzhouShip(ShenzhouShip ships[], int current_count, int max_count, ShenzhouShip new_ship);
+
+// 显示与查询
+void displayAllShenzhou(ShenzhouShip ships[], int count);
+void queryShenzhou(ShenzhouShip ships[], int count, const char* keyword);
+
+// 辅助函数
+void trimWhitespace(char* str);
+
+// ====================== 函数实现 ======================
+// 保存神舟数据到文件（二进制存储）
+void saveShenzhouToFile(ShenzhouShip ships[], int count, const char* filename) {
+    FILE* fp = fopen(filename, "wb");
+    if (!fp) {
+        perror("文件打开失败");
+        return;
+    }
+    fwrite(&count, sizeof(int), 1, fp);       // 先存数据总数
+    fwrite(ships, sizeof(ShenzhouShip), count, fp); // 再存数据内容
+    fclose(fp);
+    printf("✅ 神舟飞船数据已保存到文件：%s\n", filename);
+}
+
+// 从文件加载神舟数据
+int loadShenzhouFromFile(ShenzhouShip ships[], int max_count, const char* filename) {
+    FILE* fp = fopen(filename, "rb");
+    if (!fp) {
+        printf("提示：首次运行无数据文件，将初始化默认五代神舟数据\n");
+        return 0;
+    }
+    int count;
+    fread(&count, sizeof(int), 1, fp);
+    if (count > max_count) {
+        printf("⚠️ 文件数据量超过最大限制，仅加载前%d条\n", max_count);
+        count = max_count;
+    }
+    fread(ships, sizeof(ShenzhouShip), count, fp);
+    fclose(fp);
+    printf("✅ 从文件加载%d条神舟飞船数据成功\n", count);
+    return count;
+}
+
+// 自定义函数1：按发射日期升序排序（冒泡排序）
+void sortByLaunchDate(ShenzhouShip ships[], int count) {
+    for (int i = 0; i < count - 1; i++) {
+        for (int j = 0; j < count - i - 1; j++) {
+            if (strcmp(ships[j].launch_date, ships[j + 1].launch_date) > 0) {
+                ShenzhouShip temp = ships[j];
+                ships[j] = ships[j + 1];
+                ships[j + 1] = temp;
+            }
+        }
+    }
+    printf("✅ 神舟飞船数据已按发射日期升序排序完成\n");
+}
+
+// 自定义函数2：按飞船编号升序排序（提取名称中的数字）
+void sortByShipNumber(ShenzhouShip ships[], int count) {
+    for (int i = 0; i < count - 1; i++) {
+        for (int j = 0; j < count - i - 1; j++) {
+            // 提取"神舟X号"中的数字（跳过前2个字符"神舟"）
+            int num1 = atoi(ships[j].name + 2);
+            int num2 = atoi(ships[j + 1].name + 2);
+            if (num1 > num2) {
+                ShenzhouShip temp = ships[j];
+                ships[j] = ships[j + 1];
+                ships[j + 1] = temp;
+            }
+        }
+    }
+    printf("✅ 神舟飞船数据已按飞船编号升序排序完成\n");
+}
+
+// 自定义函数3：插入新的神舟飞船数据（防溢出）
+int insertShenzhouShip(ShenzhouShip ships[], int current_count, int max_count, ShenzhouShip new_ship) {
+    if (current_count >= max_count) {
+        printf("❌ 数据已达最大容量（%d条），无法插入\n", max_count);
+        return current_count;
+    }
+    ships[current_count] = new_ship;
+    printf("✅ 新飞船数据插入成功，当前总数：%d\n", current_count + 1);
+    return current_count + 1;
+}
+
+// 去除字符串首尾空格（优化输入体验）
+void trimWhitespace(char* str) {
+    int start = 0, end = strlen(str) - 1;
+    while (isspace(str[start])) start++;
+    while (end > start && isspace(str[end])) end--;
+    memmove(str, str + start, end - start + 1);
+    str[end - start + 1] = '\0';
+}
+
+// 格式化显示所有神舟飞船数据
+void displayAllShenzhou(ShenzhouShip ships[], int count) {
+    if (count == 0) {
+        printf("❌ 暂无神舟飞船数据\n");
+        return;
+    }
+    printf("\n===================================================== 神舟飞船数据列表 =====================================================\n");
+    printf("┌──────────┬──────────────┬──────────────────┬──────────────────────┬────────────────────────────────┬──────────────────────────────────────────────────────┐\n");
+    printf("│ 飞船名称  │  发射日期    │  发射地点        │  航天员              │  研制单位                      │  主要完成任务                                          │\n");
+    printf("├──────────┼──────────────┼──────────────────┼──────────────────────┼────────────────────────────────┼──────────────────────────────────────────────────────┤\n");
+    for (int i = 0; i < count; i++) {
+        printf("│ %-8s │ %-10s │ %-14s │ %-20s │ %-30s │ %-60s │\n",
+            ships[i].name,
+            ships[i].launch_date,
+            ships[i].launch_site,
+            ships[i].astronauts,
+            ships[i].developer,
+            ships[i].mission);
+    }
+    printf("└──────────┴──────────────┴──────────────────┴──────────────────────┴────────────────────────────────┴──────────────────────────────────────────────────────┘\n");
+}
+
+// 关键字查询（支持名称、航天员、日期等多字段匹配，忽略大小写）
+void queryShenzhou(ShenzhouShip ships[], int count, const char* keyword) {
+    if (count == 0 || strlen(keyword) == 0) {
+        printf("❌ 查询条件无效\n");
+        return;
+    }
+    printf("\n===================== 查询结果（关键字：%s） =====================\n", keyword);
+    int found = 0;
+    char key_lower[100];
+    strcpy(key_lower, keyword);
+    for (int i = 0; key_lower[i]; i++) key_lower[i] = tolower(key_lower[i]); // 转小写
+
+    for (int i = 0; i < count; i++) {
+        // 拼接当前飞船所有字段用于匹配
+        char buffer[500] = { 0 };
+        sprintf(buffer, "%s%s%s%s%s%s",
+            ships[i].name, ships[i].launch_date, ships[i].launch_site,
+            ships[i].astronauts, ships[i].developer, ships[i].mission);
+        // 转小写
+        for (int j = 0; buffer[j]; j++) buffer[j] = tolower(buffer[j]);
+
+        if (strstr(buffer, key_lower)) { // 匹配关键字
+            found++;
+            printf("\n【匹配结果%d】\n", found);
+            printf("飞船名称：%s\n发射日期：%s\n航天员：%s\n主要任务：%s\n",
+                ships[i].name, ships[i].launch_date, ships[i].astronauts, ships[i].mission);
+        }
+    }
+    if (!found) printf("❌ 未找到匹配的神舟飞船数据\n");
+}
+
+// 交互式录入新的神舟飞船数据
+ShenzhouShip inputNewShenzhou() {
+    ShenzhouShip new_ship;
+    printf("\n--------------------- 录入新神舟飞船数据 ---------------------\n");
+    printf("请输入飞船名称（如：神舟十六号）：");
+    fgets(new_ship.name, 20, stdin); trimWhitespace(new_ship.name);
+
+    printf("请输入发射日期（格式：YYYY-MM-DD）：");
+    fgets(new_ship.launch_date, 20, stdin); trimWhitespace(new_ship.launch_date);
+
+    printf("请输入发射地点：");
+    fgets(new_ship.launch_site, 50, stdin); trimWhitespace(new_ship.launch_site);
+
+    printf("请输入航天员列表：");
+    fgets(new_ship.astronauts, 100, stdin); trimWhitespace(new_ship.astronauts);
+
+    printf("请输入研制单位：");
+    fgets(new_ship.developer, 100, stdin); trimWhitespace(new_ship.developer);
+
+    printf("请输入主要完成任务：");
+    fgets(new_ship.mission, 200, stdin); trimWhitespace(new_ship.mission);
+
+    printf("------------------------------------------------------------\n");
+    return new_ship;
+}
+
+// ====================== 主函数（用户交互菜单） ======================
+int main() {
+#define MAX_SHENZHOU 50  // 最大可存储50条神舟飞船数据
+    ShenzhouShip ships[MAX_SHENZHOU] = { 0 };
+    int ship_count = 0;
+    const char* filename = "shenzhou_data.dat";
+
+    // 启动时加载文件数据
+    ship_count = loadShenzhouFromFile(ships, MAX_SHENZHOU, filename);
+
+    // 初始化默认五代神舟数据（首次运行无文件时）
+    if (ship_count == 0) {
+        ships[0] = {
+            "神舟五号", "2003-10-15", "酒泉卫星发射中心", "杨利伟",
+            "中国空间技术研究院", "首次载人航天飞行，验证载人天地往返技术"
+        };
+        ships[1] ={
+            "神舟七号", "2008-09-25", "酒泉卫星发射中心", "翟志刚、刘伯明、景海鹏",
+            "中国空间技术研究院", "首次实现航天员出舱活动（翟志刚太空行走）"
+        };
+        ships[2] = {
+            "神舟九号", "2012-06-16", "酒泉卫星发射中心", "景海鹏、刘旺、刘洋（女）",
+            "中国空间技术研究院", "首次与天宫一号手动交会对接，首位女航天员升空"
+        };
+        ships[3] = {
+            "神舟十二号", "2021-06-17", "酒泉卫星发射中心", "聂海胜、刘伯明、汤洪波",
+            "中国空间技术研究院", "首次进驻天和核心舱，开展3个月在轨驻留"
+        };
+        ships[4] = {
+            "神舟十五号", "2022-11-29", "酒泉卫星发射中心", "费俊龙、邓清明、张陆",
+            "中国空间技术研究院", "首次实现空间站6人乘组在轨轮换"
+        };
+        ship_count = 5;
+        saveShenzhouToFile(ships, ship_count, filename); // 保存默认数据
+    }
+
+    // 主菜单循环
+    int choice;
+    while (1) {
+        printf("\n===================== 神舟飞船发展历程管理系统 =====================\n");
+        printf("1. 显示所有神舟飞船数据\n");
+        printf("2. 按发射日期排序\n");
+        printf("3. 按飞船编号排序\n");
+        printf("4. 插入新的神舟飞船数据\n");
+        printf("5. 关键字查询\n");
+        printf("6. 手动保存数据\n");
+        printf("0. 退出程序\n");
+        printf("请输入操作序号：");
+        scanf("%d", &choice);
+        getchar(); // 吸收换行符
+
+        switch (choice) {
+        case 1:
+            displayAllShenzhou(ships, ship_count);
+            break;
+        case 2:
+            sortByLaunchDate(ships, ship_count);
+            break;
+        case 3:
+            sortByShipNumber(ships, ship_count);
+            break;
+        case 4: {
+            ShenzhouShip new_ship = inputNewShenzhou();
+            ship_count = insertShenzhouShip(ships, ship_count, MAX_SHENZHOU, new_ship);
+            break;
+        }
+        case 5: {
+            char keyword[100];
+            printf("请输入查询关键字（如：杨利伟、神舟五号、2003）：");
+            fgets(keyword, 100, stdin);
+            trimWhitespace(keyword);
+            queryShenzhou(ships, ship_count, keyword);
+            break;
+        }
+        case 6:
+            saveShenzhouToFile(ships, ship_count, filename);
+            break;
+        case 0:
+            printf("📤 退出前自动保存数据...\n");
+            saveShenzhouToFile(ships, ship_count, filename);
+            printf("👋 程序已退出，感谢使用\n");
+            exit(0);
+        default:
+            printf("❌ 无效操作，请输入0-6之间的序号\n");
+        }
+    }
+
+    return 0;
+}
